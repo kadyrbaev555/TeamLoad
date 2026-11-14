@@ -62,7 +62,8 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// dummyHash keeps login timing similar for unknown emails.
+// dummyHash makes unknown-email logins perform the same bcrypt work as a
+// password check, reducing the timing difference between unknown and known users.
 var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("timing-equaliser"), bcryptCost)
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) error {

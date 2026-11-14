@@ -47,6 +47,7 @@ type geminiResponse struct {
 }
 
 func (g Gemini) generate(ctx context.Context, kind, prompt string, out any) error {
+	// The operation-specific schema constrains the response before strict decoding.
 	schema, err := schemaFS.ReadFile("schemas/" + kind + ".json")
 	if err != nil {
 		return err

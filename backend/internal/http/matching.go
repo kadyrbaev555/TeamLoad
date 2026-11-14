@@ -186,6 +186,7 @@ func (s *Server) handleRunMatching(w http.ResponseWriter, r *http.Request) error
 	version := ai.PromptVersion(ai.KindMatching)
 	source := "ai"
 	err = s.st.Tx(ctx, func(q *db.Queries) error {
+		// Serialize replacement with manual assignment changes for this project.
 		if _, err := q.GetProjectForUpdate(ctx, p.ID); err != nil {
 			return err
 		}

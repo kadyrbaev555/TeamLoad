@@ -280,7 +280,8 @@ func fitFromScore(score int) int {
 
 // bestAssignment maximises the total score (one seat per person). People are
 // visited in canonical (content) order so shuffling the input never changes
-// the result.
+// the result. Exhaustive search is practical because project teams have at
+// most six members.
 func bestAssignment(score [][]int, order []int, nSeats int) []int {
 	best := make([]int, len(score))
 	cur := make([]int, len(score))

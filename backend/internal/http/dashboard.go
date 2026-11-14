@@ -64,6 +64,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) error {
 		HasEstimates: len(tasks) > 0, Rows: []loadRowJSON{}}
 	var allHours float64
 	for _, t := range tasks {
+		// Keep unassigned estimates in the denominator so SharePct reflects all project work.
 		allHours += t.Estimate
 		open := t.Status != domain.StatusDone
 		if open {

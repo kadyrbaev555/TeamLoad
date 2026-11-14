@@ -96,6 +96,7 @@ func (s *Server) handlePutProfile(w http.ResponseWriter, r *http.Request) error 
 			return err
 		}
 		if changed {
+			// Existing suggestions no longer reflect the profile used to generate them.
 			outdated, err = q.MarkUserSuggestionsOutdated(r.Context(), &u.ID)
 		}
 		return err
