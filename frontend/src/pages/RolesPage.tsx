@@ -78,10 +78,10 @@ function ranLabel(ranAt: string | null): string {
 
 function Badge({ row }: { row: MatchRow }) {
   if (!row.user_id) return <Chip tone="line">Unassigned</Chip>;
+  if (row.source === "manual")
+    return row.state === "accepted" ? <Chip icon="check">Set manually</Chip> : <Chip tone="warn">Set manually · not accepted</Chip>;
   if (row.state === "accepted")
-    return row.source === "manual" ? (
-      <Chip icon="check">Set manually</Chip>
-    ) : (
+    return (
       <Chip tone="ok" icon="check">
         Accepted
       </Chip>
@@ -272,7 +272,7 @@ function RolesScreen({ b }: { b: ProjectBundle }) {
     const swapped = M.rows.some((r) => r.user_id === userId && r.seat_id !== seatId) && M.rows.some((r) => r.seat_id === seatId && r.user_id);
     assign.mutate(
       { seatId, userId },
-      { onSuccess: () => toast(swapped ? "Roles swapped and saved as manual" : "Role saved as manual"), onError: (e) => setError(errorMessage(e)) },
+      { onSuccess: () => toast(swapped ? "Roles swapped. Accept to confirm them." : "Role set manually. Accept to confirm it."), onError: (e) => setError(errorMessage(e)) },
     );
   };
   const onAccept = (seatId: string) => accept.mutate(seatId, { onError: (e) => setError(errorMessage(e)) });
@@ -347,7 +347,7 @@ function RolesScreen({ b }: { b: ProjectBundle }) {
             ) : null;
           })}
         </div>
-        <p className="small muted">Changing a person swaps them with whoever held that role. Every change is saved as “set manually”.</p>
+        <p className="small muted">Changing a person swaps them with whoever held that role. Every change is saved as “set manually” and waits for Accept.</p>
       </div>
       {confirmRerun && (
         <ConfirmModal

@@ -254,7 +254,7 @@ func (s *Server) handleAcceptMatching(w http.ResponseWriter, r *http.Request) er
 }
 
 // handleAssignSeat sets a person on a seat. If that person held another
-// seat, the two people swap; both rows become manual and accepted.
+// seat, the two people swap; both rows become manual and wait for Accept.
 func (s *Server) handleAssignSeat(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		UserID string `json:"user_id"`

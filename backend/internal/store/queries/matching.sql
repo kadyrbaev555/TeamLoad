@@ -31,11 +31,12 @@ SELECT * FROM role_assignments WHERE project_id = $1 AND user_id = $2;
 UPDATE role_assignments SET user_id = NULL WHERE project_id = $1 AND seat_id = $2;
 
 -- name: SetManualAssignment :exec
+-- A manual choice waits for Accept like an AI suggestion, so the owner confirms the distribution.
 INSERT INTO role_assignments (project_id, seat_id, user_id, fit, runner_up_seat_id, explanation, state, source, outdated)
-VALUES ($1, $2, $3, NULL, NULL, '', 'accepted', 'manual', false)
+VALUES ($1, $2, $3, NULL, NULL, '', 'suggested', 'manual', false)
 ON CONFLICT (project_id, seat_id) DO UPDATE
 SET user_id = EXCLUDED.user_id, fit = NULL, runner_up_seat_id = NULL, explanation = '',
-    state = 'accepted', source = 'manual', outdated = false, generated_at = now();
+    state = 'suggested', source = 'manual', outdated = false, generated_at = now();
 
 -- name: SetMatchingMeta :exec
 UPDATE projects
