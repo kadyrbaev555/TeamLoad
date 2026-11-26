@@ -10,7 +10,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: UpdateSeat :execrows
-UPDATE plan_seats SET name = $3, summary = $4, effort_share = $5
+UPDATE plan_seats SET name = $3, summary = $4, effort_share = $5, responsibilities = $6
 WHERE id = $1 AND project_id = $2;
 
 -- name: SetPlanGenerated :exec

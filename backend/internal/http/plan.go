@@ -115,6 +115,8 @@ func (s *Server) handlePutPlan(w http.ResponseWriter, r *http.Request) error {
 			Name        string `json:"name"`
 			Summary     string `json:"summary"`
 			EffortShare int    `json:"effort_share"`
+			// Responsibilities is optional: when omitted the seat keeps its current list.
+			Responsibilities *[]string `json:"responsibilities"`
 		} `json:"seats"`
 	}
 	if err := decode(r, &in); err != nil {
@@ -126,21 +128,30 @@ func (s *Server) handlePutPlan(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	known := map[uuid.UUID]bool{}
+	known := map[uuid.UUID][]string{}
 	for _, st := range existing {
-		known[st.ID] = true
+		known[st.ID] = st.Responsibilities
 	}
 	edits := make([]domain.SeatEdit, len(in.Seats))
 	ids := make([]uuid.UUID, len(in.Seats))
 	seen := map[uuid.UUID]bool{}
 	for i, st := range in.Seats {
 		id, err := uuid.Parse(st.ID)
-		if err != nil || !known[id] || seen[id] {
+		current, ok := known[id]
+		if err != nil || !ok || seen[id] {
 			return errField("seats", domain.MsgSeatCount)
 		}
 		seen[id] = true
 		ids[i] = id
-		edits[i] = domain.SeatEdit{Name: strings.TrimSpace(st.Name), Summary: strings.TrimSpace(st.Summary), EffortShare: st.EffortShare}
+		resp := current
+		if st.Responsibilities != nil {
+			resp = make([]string, len(*st.Responsibilities))
+			for k, r := range *st.Responsibilities {
+				resp[k] = strings.TrimSpace(r)
+			}
+		}
+		edits[i] = domain.SeatEdit{Name: strings.TrimSpace(st.Name), Summary: strings.TrimSpace(st.Summary),
+			EffortShare: st.EffortShare, Responsibilities: resp}
 	}
 	if e := domain.ValidateSeatEdits(edits, len(existing)); !e.OK() {
 		return errValidation(e)
@@ -148,7 +159,7 @@ func (s *Server) handlePutPlan(w http.ResponseWriter, r *http.Request) error {
 	err = s.st.Tx(ctx, func(q *db.Queries) error {
 		for i, e := range edits {
 			if _, err := q.UpdateSeat(ctx, db.UpdateSeatParams{ID: ids[i], ProjectID: p.ID, Name: e.Name,
-				Summary: e.Summary, EffortShare: int32(e.EffortShare)}); err != nil {
+				Summary: e.Summary, EffortShare: int32(e.EffortShare), Responsibilities: e.Responsibilities}); err != nil {
 				return err
 			}
 		}

@@ -254,7 +254,8 @@ func TestValidateTask(t *testing.T) {
 }
 
 func TestValidateSeatEdits(t *testing.T) {
-	seats := []SeatEdit{{"PM", "", 20}, {"Backend", "", 30}, {"Frontend", "", 30}, {"Design", "", 20}}
+	resp := []string{"Plan sprints", "Review work", "Ship releases"}
+	seats := []SeatEdit{{"PM", "", 20, resp}, {"Backend", "", 30, resp}, {"Frontend", "", 30, resp}, {"Design", "", 20, resp}}
 	if e := ValidateSeatEdits(seats, 4); !e.OK() {
 		t.Fatalf("valid plan rejected: %v", e)
 	}
@@ -262,15 +263,25 @@ func TestValidateSeatEdits(t *testing.T) {
 	if e := ValidateSeatEdits(seats, 4); e["total"] != MsgShareTotal {
 		t.Errorf("sum 105 accepted: %v", e)
 	}
-	seats[0] = SeatEdit{"", desc(141), 4}
+	seats[0] = SeatEdit{"", desc(141), 4, resp[:2]}
 	e := ValidateSeatEdits(seats, 4)
-	for _, f := range []string{"name", "summary", "effort_share"} {
+	for _, f := range []string{"name", "summary", "effort_share", "responsibilities"} {
 		if e[f] == "" {
 			t.Errorf("expected error on %s", f)
 		}
 	}
 	if e := ValidateSeatEdits(seats[:3], 4); e["seats"] == "" {
 		t.Error("wrong seat count accepted")
+	}
+	for name, items := range map[string][]string{
+		"too many":  {"a", "b", "c", "d", "e", "f"},
+		"blank":     {"a", "  ", "c"},
+		"too long":  {"a", "b", desc(81)},
+		"duplicate": {"Review work", "review work", "c"},
+	} {
+		if validResponsibilities(items) {
+			t.Errorf("%s responsibilities accepted", name)
+		}
 	}
 }
 
