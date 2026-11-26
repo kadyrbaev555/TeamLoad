@@ -11,9 +11,9 @@ import { Button, Chip, EffortBar, Legend, Notice, PageHead, PageSkeleton, Swatch
 import { ProjectPage } from "../layout/ProjectPage";
 import { designTeamSteps, redesignSteps } from "../lib/aiSteps";
 import { fmtDate } from "../lib/format";
-import { MSG } from "../lib/validate";
+import { MAX_RESPONSIBILITIES, MAX_RESPONSIBILITY_LENGTH, MIN_RESPONSIBILITIES, MSG, responsibilitiesProblem } from "../lib/validate";
 
-type Draft = Pick<Seat, "id" | "name" | "summary" | "effort_share">;
+type Draft = Pick<Seat, "id" | "name" | "summary" | "effort_share" | "responsibilities">;
 
 function Editable({ as: Tag, value, editing, onChange, label }: {
   as: "h3" | "p";
@@ -44,6 +44,48 @@ function Editable({ as: Tag, value, editing, onChange, label }: {
   );
 }
 
+function ResponsibilitiesEditor({ items, roleName, onChange }: { items: string[]; roleName: string; onChange: (v: string[]) => void }) {
+  const problem = responsibilitiesProblem(items);
+  return (
+    <div className="resp-edit stack" style={{ gap: 6 }}>
+      {items.map((r, k) => (
+        <div className="resp-row" key={k}>
+          <input
+            className="input"
+            value={r}
+            maxLength={MAX_RESPONSIBILITY_LENGTH}
+            aria-label={`Responsibility ${k + 1} for ${roleName}`}
+            aria-invalid={r.trim() === "" || undefined}
+            onChange={(e) => onChange(items.map((x, j) => (j === k ? e.target.value : x)))}
+          />
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={items.length <= MIN_RESPONSIBILITIES}
+            onClick={() => onChange(items.filter((_, j) => j !== k))}
+            aria-label={`Remove responsibility ${k + 1} for ${roleName}`}
+            title="Remove"
+          >
+            ×
+          </Button>
+        </div>
+      ))}
+      {items.length < MAX_RESPONSIBILITIES && (
+        <div>
+          <Button size="sm" icon="plus" onClick={() => onChange([...items, ""])}>
+            Add responsibility
+          </Button>
+        </div>
+      )}
+      {problem && (
+        <span className="small" style={{ color: "var(--bad)" }} role="alert">
+          {problem}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function SeatCard({ s, i, total, draft, onDraft }: { s: Seat; i: number; total: number; draft?: Draft; onDraft: (d: Draft) => void }) {
   const editing = !!draft;
   const name = draft?.name ?? s.name;
@@ -67,11 +109,15 @@ function SeatCard({ s, i, total, draft, onDraft }: { s: Seat; i: number; total: 
       />
       <div className="stack" style={{ gap: 6 }}>
         <span className="eyebrow">Responsibilities</span>
-        <ul>
-          {s.responsibilities.map((r) => (
-            <li key={r}>{r}</li>
-          ))}
-        </ul>
+        {draft ? (
+          <ResponsibilitiesEditor items={draft.responsibilities} roleName={name} onChange={(v) => onDraft({ ...draft, responsibilities: v })} />
+        ) : (
+          <ul>
+            {s.responsibilities.map((r) => (
+              <li key={r}>{r}</li>
+            ))}
+          </ul>
+        )}
       </div>
       <div className="stack" style={{ gap: 6 }}>
         <span className="eyebrow">Skills needed</span>
@@ -129,6 +175,7 @@ function PlanView({ b, plan }: { b: ProjectBundle; plan: Plan }) {
   const sum = shares.reduce((a, v) => a + (Number.isFinite(v) ? v : 0), 0);
   const approved = plan.status === "approved";
   const editing = drafts !== null;
+  const respOk = !drafts || drafts.every((d) => responsibilitiesProblem(d.responsibilities) === null);
 
   const doRegenerate = async (n: string) => {
     setConfirm(null);
@@ -145,7 +192,7 @@ function PlanView({ b, plan }: { b: ProjectBundle; plan: Plan }) {
 
   const onSave = () =>
     drafts &&
-    save.mutate(drafts, {
+    save.mutate(drafts.map((d) => ({ ...d, responsibilities: d.responsibilities.map((r) => r.trim()) })), {
       onSuccess: () => {
         setDrafts(null);
         toast("Role plan saved");
@@ -155,14 +202,14 @@ function PlanView({ b, plan }: { b: ProjectBundle; plan: Plan }) {
 
   const actions = !owner ? null : editing ? (
     <>
-      <Button variant="primary" icon="check" disabled={sum !== 100 || save.isPending} onClick={onSave}>
+      <Button variant="primary" icon="check" disabled={sum !== 100 || !respOk || save.isPending} onClick={onSave}>
         Save changes
       </Button>
       <Button onClick={() => setDrafts(null)}>Cancel</Button>
     </>
   ) : (
     <>
-      <Button icon="pen" onClick={() => setDrafts(seats.map((s) => ({ id: s.id, name: s.name, summary: s.summary, effort_share: s.effort_share })))}>
+      <Button icon="pen" onClick={() => setDrafts(seats.map((s) => ({ id: s.id, name: s.name, summary: s.summary, effort_share: s.effort_share, responsibilities: [...s.responsibilities] })))}>
         Edit
       </Button>
       <Button icon="refresh" onClick={() => askRegenerate("")}>

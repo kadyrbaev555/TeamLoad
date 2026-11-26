@@ -17,6 +17,7 @@ export const MSG = {
   estimateRange: "Estimate must be between 0.5 and 40 hours.",
   taskTitle: "Give the task a title.",
   aiUnavailable: "AI service temporarily unavailable. Please retry or assign roles manually",
+  seatResp: "Give every role 3–5 responsibilities, each up to 80 characters.",
 } as const;
 
 export function validEmail(s: string): boolean {
@@ -62,4 +63,21 @@ export function checkEstimate(raw: string): [number, string | null] {
   if (!Number.isFinite(h) || h <= 0) return [0, MSG.estimateRequired];
   if (h < 0.5 || h > 40) return [0, MSG.estimateRange];
   return [Math.round(h * 2) / 2, null];
+}
+
+export const MIN_RESPONSIBILITIES = 3;
+export const MAX_RESPONSIBILITIES = 5;
+export const MAX_RESPONSIBILITY_LENGTH = 80;
+
+/** Mirrors the server rule: 3–5 unique, non-empty items of up to 80 characters. */
+export function responsibilitiesProblem(items: string[]): string | null {
+  if (items.length < MIN_RESPONSIBILITIES || items.length > MAX_RESPONSIBILITIES) return MSG.seatResp;
+  const seen = new Set<string>();
+  for (const it of items) {
+    const t = it.trim();
+    const n = Array.from(t).length;
+    if (n < 1 || n > MAX_RESPONSIBILITY_LENGTH || seen.has(t.toLowerCase())) return MSG.seatResp;
+    seen.add(t.toLowerCase());
+  }
+  return null;
 }

@@ -213,7 +213,7 @@ function usePlanMutation<V>(id: string, fn: (v: V) => Promise<{ plan: Plan }>) {
 }
 
 export function useSavePlan(id: string) {
-  return usePlanMutation(id, (seats: { id: string; name: string; summary: string; effort_share: number }[]) =>
+  return usePlanMutation(id, (seats: { id: string; name: string; summary: string; effort_share: number; responsibilities: string[] }[]) =>
     api<{ plan: Plan }>("PUT", `/projects/${id}/plan`, { seats }),
   );
 }
