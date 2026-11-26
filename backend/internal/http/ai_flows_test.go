@@ -102,6 +102,42 @@ func TestPlan_EditRequiresTotal100(t *testing.T) {
 	if s["name"] != "Role A" || s["effort_share"].(float64) != 50 {
 		t.Fatalf("edit not saved: %v", s)
 	}
+	if len(list(s["responsibilities"])) < 3 {
+		t.Fatalf("omitted responsibilities must be kept: %v", s)
+	}
+}
+
+func TestPlan_EditResponsibilities(t *testing.T) {
+	e := newEnv(t)
+	c := e.user("Aruzhan Sadykova")
+	id, _ := c.project(3)
+	c.must(200, "POST", "/projects/"+id+"/plan/generate", nil)
+	seats := seatsOf(c, id)
+	edit := func(resp []string) resp {
+		var body []map[string]any
+		for i, s := range seats {
+			row := map[string]any{"id": s["id"], "name": s["name"], "summary": s["summary"], "effort_share": []int{40, 30, 30}[i]}
+			if i == 0 {
+				row["responsibilities"] = resp
+			}
+			body = append(body, row)
+		}
+		return c.do("PUT", "/projects/"+id+"/plan", map[string]any{"seats": body})
+	}
+	if r := edit([]string{"Only one", "Two"}); r.Status != 400 || r.errField("responsibilities") != domain.MsgSeatResp {
+		t.Fatalf("2 responsibilities accepted: %s", r.Raw)
+	}
+	if r := edit([]string{"Same", "same", "Other"}); r.Status != 400 || r.errField("responsibilities") == "" {
+		t.Fatalf("duplicate responsibilities accepted: %s", r.Raw)
+	}
+	r := edit([]string{"  Run standups ", "Track the backlog", "Talk to the client", "Demo each sprint"})
+	if r.Status != 200 {
+		t.Fatalf("valid edit rejected: %s", r.Raw)
+	}
+	got := list(obj(list(obj(r.Body["plan"])["seats"])[0])["responsibilities"])
+	if len(got) != 4 || got[0] != "Run standups" || got[3] != "Demo each sprint" {
+		t.Fatalf("responsibilities not saved: %v", got)
+	}
 }
 
 func TestPlan_ApproveUnlocksMatching(t *testing.T) {

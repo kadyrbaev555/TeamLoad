@@ -44,6 +44,7 @@ const (
 	MsgSeatName       = "Give every role a name (up to 40 characters)."
 	MsgSeatSummary    = "Keep each summary under 140 characters."
 	MsgSeatShare      = "Each effort share must be a whole number from 5 to 60."
+	MsgSeatResp       = "Give every role 3–5 responsibilities, each up to 80 characters."
 	MsgShareTotal     = "Effort total must be 100%."
 	MsgSeatCount      = "The plan must keep one role per seat."
 	MsgNoteTooLong    = "Keep the note under 500 characters."
@@ -73,6 +74,9 @@ const (
 	MaxSeatSummary    = 140
 	MinEffortShare    = 5
 	MaxEffortShare    = 60
+	MinSeatResp       = 3
+	MaxSeatResp       = 5
+	MaxSeatRespLength = 80
 	MaxActivityName   = 120
 	MinPasswordLength = 8
 )
@@ -270,9 +274,30 @@ func ValidateEstimate(h *float64) (float64, string) {
 
 // SeatEdit is the owner-editable part of a seat.
 type SeatEdit struct {
-	Name        string
-	Summary     string
-	EffortShare int
+	Name             string
+	Summary          string
+	EffortShare      int
+	Responsibilities []string
+}
+
+// validResponsibilities checks the 3–5 non-empty, unique items of up to 80 characters each.
+func validResponsibilities(items []string) bool {
+	if len(items) < MinSeatResp || len(items) > MaxSeatResp {
+		return false
+	}
+	seen := map[string]bool{}
+	for _, it := range items {
+		t := strings.TrimSpace(it)
+		if n := runes(t); n < 1 || n > MaxSeatRespLength {
+			return false
+		}
+		k := strings.ToLower(t)
+		if seen[k] {
+			return false
+		}
+		seen[k] = true
+	}
+	return true
 }
 
 // ValidateSeatEdits checks inline plan edits and the 100% total.
@@ -292,6 +317,9 @@ func ValidateSeatEdits(seats []SeatEdit, teamSize int) FieldErrors {
 		}
 		if s.EffortShare < MinEffortShare || s.EffortShare > MaxEffortShare {
 			e["effort_share"] = MsgSeatShare
+		}
+		if !validResponsibilities(s.Responsibilities) {
+			e["responsibilities"] = MsgSeatResp
 		}
 		sum += s.EffortShare
 	}

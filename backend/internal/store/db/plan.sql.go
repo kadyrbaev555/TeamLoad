@@ -154,16 +154,17 @@ func (q *Queries) SetPlanStatus(ctx context.Context, arg SetPlanStatusParams) er
 }
 
 const updateSeat = `-- name: UpdateSeat :execrows
-UPDATE plan_seats SET name = $3, summary = $4, effort_share = $5
+UPDATE plan_seats SET name = $3, summary = $4, effort_share = $5, responsibilities = $6
 WHERE id = $1 AND project_id = $2
 `
 
 type UpdateSeatParams struct {
-	ID          uuid.UUID
-	ProjectID   uuid.UUID
-	Name        string
-	Summary     string
-	EffortShare int32
+	ID               uuid.UUID
+	ProjectID        uuid.UUID
+	Name             string
+	Summary          string
+	EffortShare      int32
+	Responsibilities []string
 }
 
 func (q *Queries) UpdateSeat(ctx context.Context, arg UpdateSeatParams) (int64, error) {
@@ -173,6 +174,7 @@ func (q *Queries) UpdateSeat(ctx context.Context, arg UpdateSeatParams) (int64, 
 		arg.Name,
 		arg.Summary,
 		arg.EffortShare,
+		arg.Responsibilities,
 	)
 	if err != nil {
 		return 0, err

@@ -15,6 +15,8 @@
 .why b{color:var(--ink);font-weight:600}
 .share{display:flex;align-items:center;gap:8px}
 .share input{width:64px;text-align:right;font-family:var(--f-mono);padding:4px 8px}
+.resp-row{display:flex;gap:6px;align-items:center}
+.resp-row .input{padding:5px 9px;font-size:14px}
 .editable[contenteditable="true"]{outline:1px dashed var(--accent);outline-offset:3px;border-radius:4px}
 .invite{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .code{font-family:var(--f-mono);font-size:22px;font-weight:700;letter-spacing:.12em;padding:6px 12px;border-radius:9px;background:var(--surface-2)}

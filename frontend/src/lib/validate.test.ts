@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkEstimate, MSG, profileProblem, validateNewProject, validateRegistration, validEmail } from "./validate";
+import { checkEstimate, MSG, profileProblem, responsibilitiesProblem, validateNewProject, validateRegistration, validEmail } from "./validate";
 
 describe("registration", () => {
   it("marks each wrong field and uses the exact consent message", () => {
@@ -45,5 +45,19 @@ describe("estimate", () => {
     expect(checkEstimate("0.25")[1]).toBe("Estimate must be between 0.5 and 40 hours.");
     expect(checkEstimate("2.3")).toEqual([2.5, null]);
     expect(checkEstimate("40")).toEqual([40, null]);
+  });
+});
+
+describe("responsibilities", () => {
+  it("accepts 3–5 unique items up to 80 characters", () => {
+    expect(responsibilitiesProblem(["Plan sprints", "Review work", "Ship releases"])).toBeNull();
+    expect(responsibilitiesProblem(["a", "b", "c", "d", "e"])).toBeNull();
+  });
+  it("rejects wrong counts, blanks, long and duplicate items", () => {
+    expect(responsibilitiesProblem(["a", "b"])).toBe(MSG.seatResp);
+    expect(responsibilitiesProblem(["a", "b", "c", "d", "e", "f"])).toBe(MSG.seatResp);
+    expect(responsibilitiesProblem(["a", "  ", "c"])).toBe(MSG.seatResp);
+    expect(responsibilitiesProblem(["a", "b", "x".repeat(81)])).toBe(MSG.seatResp);
+    expect(responsibilitiesProblem(["Review", "review ", "c"])).toBe(MSG.seatResp);
   });
 });
