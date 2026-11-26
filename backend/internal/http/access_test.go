@@ -501,6 +501,7 @@ func TestSettings_OwnerOnly(t *testing.T) {
 	m.must(403, "POST", "/projects/"+id+"/invite-code", nil)
 	m.must(403, "DELETE", "/projects/"+id+"/members/"+owner.ID, nil)
 	m.must(403, "POST", "/projects/"+id+"/plan/generate", nil)
+	m.must(403, "DELETE", "/projects/"+id, nil)
 }
 
 func TestSettings_RemoveMember(t *testing.T) {
@@ -512,6 +513,22 @@ func TestSettings_RemoveMember(t *testing.T) {
 	owner.must(204, "DELETE", "/projects/"+id+"/members/"+m.ID, nil)
 	m.must(404, "GET", "/projects/"+id, nil)
 	assertCount(t, "project_members", 1)
+}
+
+func TestSettings_DeleteProject(t *testing.T) {
+	e := newEnv(t)
+	owner, ms, id := team(t, e, 3, "Daniyar Kenzhebekov")
+	owner.must(201, "POST", "/projects/"+id+"/tasks", map[string]any{"title": "Write intro", "estimate": 2})
+	other, _ := owner.project(4) // a second project must survive
+	owner.must(204, "DELETE", "/projects/"+id, nil)
+	owner.must(404, "GET", "/projects/"+id, nil)
+	ms[0].must(404, "GET", "/projects/"+id, nil)
+	owner.must(200, "GET", "/projects/"+other, nil)
+	assertCount(t, "projects", 1)
+	assertCount(t, "project_members", 1)
+	assertCount(t, "plan_seats", 0)
+	assertCount(t, "tasks", 0)
+	owner.must(404, "DELETE", "/projects/"+id, nil)
 }
 
 func TestSettings_CannotRemoveOwner(t *testing.T) {

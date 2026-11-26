@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { ApiError, errorMessage } from "../api/client";
-import { useGeneratePlan, useNewInviteCode, usePlan, useRemoveMember, useUpdateProject } from "../api/hooks";
+import { useDeleteProject, useGeneratePlan, useNewInviteCode, usePlan, useRemoveMember, useUpdateProject } from "../api/hooks";
 import type { Member, ProjectBundle } from "../api/types";
 import { Field, Input, Textarea } from "../components/Field";
 import { Icon } from "../components/Icon";
@@ -113,6 +113,61 @@ function MemberRow({ m, projectId }: { m: Member; projectId: string }) {
   );
 }
 
+function DeleteProject({ b }: { b: ProjectBundle }) {
+  const p = b.project;
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [error, setError] = useState("");
+  const del = useDeleteProject(p.id);
+  const toast = useToast();
+  const navigate = useNavigate();
+  const close = () => {
+    setOpen(false);
+    setTyped("");
+    setError("");
+  };
+  const matches = typed.trim() === p.title.trim();
+  const onDelete = () =>
+    del.mutate(undefined, {
+      onSuccess: () => {
+        navigate("/projects", { replace: true });
+        toast(`Project "${p.title}" was deleted`);
+      },
+      onError: (e) => setError(errorMessage(e)),
+    });
+
+  return (
+    <div className="panel pad stack" style={{ gap: 10 }}>
+      <h3>Delete project</h3>
+      <p className="small muted">
+        Removes the project for all {b.members.length} {b.members.length === 1 ? "member" : "members"}: role plan, matching, RACI and tasks. This cannot be undone.
+      </p>
+      <div>
+        <Button variant="danger" size="sm" onClick={() => setOpen(true)}>
+          Delete project
+        </Button>
+      </div>
+      {open && (
+        <Modal title="Delete this project?" onClose={close}>
+          <p>
+            <b>{p.title}</b> and everything in it will be deleted for the whole team. This cannot be undone.
+          </p>
+          {error && <Notice tone="bad">{error}</Notice>}
+          <Field label="Type the project title to confirm">
+            {(a) => <Input {...a} value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={p.title} data-autofocus autoComplete="off" />}
+          </Field>
+          <div className="row">
+            <Button variant="danger" disabled={!matches || del.isPending} onClick={onDelete}>
+              Delete project
+            </Button>
+            <Button onClick={close}>Cancel</Button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 function Settings({ b }: { b: ProjectBundle }) {
   const p = b.project;
   const [askRegen, setAskRegen] = useState(false);
@@ -196,6 +251,7 @@ function Settings({ b }: { b: ProjectBundle }) {
               <MemberRow key={m.id} m={m} projectId={p.id} />
             ))}
           </div>
+          <DeleteProject b={b} />
         </div>
       </div>
       {askRegen && (

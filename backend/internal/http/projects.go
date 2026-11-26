@@ -314,6 +314,25 @@ func (s *Server) handleRemoveMember(w http.ResponseWriter, r *http.Request) erro
 	return nil
 }
 
+// handleDeleteProject deletes the project for everyone. Members, the plan,
+// matching, RACI, tasks and AI call records go with it (ON DELETE CASCADE).
+// Only the owner can do this.
+func (s *Server) handleDeleteProject(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+	p := projectFrom(ctx)
+	err := s.st.Tx(ctx, func(q *db.Queries) error {
+		if _, err := q.GetProjectForUpdate(ctx, p.ID); err != nil {
+			return err
+		}
+		return q.DeleteProject(ctx, p.ID)
+	})
+	if err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
 // ---- invites ----
 
 type inviteJSON struct {
