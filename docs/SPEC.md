@@ -138,7 +138,7 @@ Error messages in quotes are **exact strings** (QA tests them). Every rule is va
 - Each row shows the design's content: seat name + share, avatar + person select, fit score 0–100 with bar, explanation (2–3 sentences, quoting the profile, addressed to the person as "you"), "Also a good fit: {runner-up seat}", status chip.
 - Row states: **Suggested** (AI, not accepted) → **Accepted** (`ai_accepted`) or **Set manually** (`manual`, fit shown as "—", explanation replaced by the design's "Changed by the team…" text).
 - **Accept** (one row), **Accept all**, **Run again** (confirm if any row is accepted; replaces all rows).
-- **Reassign**: choosing another person swaps the two people's seats; both rows become `manual` + accepted (toast as in the design). After confirmation the owner can still change roles; the new value replaces the old one.
+- **Reassign**: choosing another person swaps the two people's seats; both rows become `manual` and wait for **Accept** / **Accept all**, like AI suggestions, so a fully manual distribution can be confirmed too. After confirmation the owner can still change roles; the new value replaces the old one and needs Accept again.
 - Skill-gap notice and growth note come from the AI output (no hard-coded text). Hide each notice when empty.
 - AI failure → **"AI service temporarily unavailable. Please retry or assign roles manually"**; profiles are kept and every row gets a person select so the owner can assign all seats manually.
 

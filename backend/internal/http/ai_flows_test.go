@@ -340,7 +340,7 @@ func TestMatching_ReassignSwapsSeats(t *testing.T) {
 		t.Fatalf("not swapped: %v", after)
 	}
 	for _, row := range after[:2] {
-		if row["source"] != "manual" || row["state"] != "accepted" || row["fit"] != nil || row["explanation"] != "" {
+		if row["source"] != "manual" || row["state"] != "suggested" || row["fit"] != nil || row["explanation"] != "" {
 			t.Fatalf("swapped row: %v", row)
 		}
 	}
@@ -413,8 +413,19 @@ func TestMatching_AIFailureKeepsProfilesAndAllowsManual(t *testing.T) {
 		owner.must(200, "PUT", "/projects/"+id+"/matching/seats/"+row["seat_id"].(string), map[string]any{"user_id": people[i]})
 	}
 	for i, row := range rowsOf(owner.must(200, "GET", "/projects/"+id+"/matching", nil)) {
-		if row["user_id"] != people[i] || row["source"] != "manual" {
+		if row["user_id"] != people[i] || row["source"] != "manual" || row["state"] != "suggested" {
 			t.Fatalf("manual row %d: %v", i, row)
+		}
+	}
+	// A fully manual distribution is confirmed with Accept all.
+	for i, row := range rowsOf(owner.must(200, "POST", "/projects/"+id+"/matching/accept", map[string]any{})) {
+		if row["state"] != "accepted" || row["source"] != "manual" {
+			t.Fatalf("manual row %d not confirmed: %v", i, row)
+		}
+	}
+	for _, m := range list(owner.must(200, "GET", "/projects/"+id, nil).Body["members"]) {
+		if obj(m)["role_confirmed"] != true {
+			t.Fatalf("member not confirmed: %v", m)
 		}
 	}
 }

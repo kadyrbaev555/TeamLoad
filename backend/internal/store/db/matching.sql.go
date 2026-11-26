@@ -207,10 +207,10 @@ func (q *Queries) ListAssignments(ctx context.Context, projectID uuid.UUID) ([]R
 
 const setManualAssignment = `-- name: SetManualAssignment :exec
 INSERT INTO role_assignments (project_id, seat_id, user_id, fit, runner_up_seat_id, explanation, state, source, outdated)
-VALUES ($1, $2, $3, NULL, NULL, '', 'accepted', 'manual', false)
+VALUES ($1, $2, $3, NULL, NULL, '', 'suggested', 'manual', false)
 ON CONFLICT (project_id, seat_id) DO UPDATE
 SET user_id = EXCLUDED.user_id, fit = NULL, runner_up_seat_id = NULL, explanation = '',
-    state = 'accepted', source = 'manual', outdated = false, generated_at = now()
+    state = 'suggested', source = 'manual', outdated = false, generated_at = now()
 `
 
 type SetManualAssignmentParams struct {
