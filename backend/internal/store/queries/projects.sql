@@ -43,6 +43,12 @@ SELECT EXISTS (SELECT 1 FROM project_members WHERE project_id = $1 AND user_id =
 -- name: CountMembers :one
 SELECT count(*)::int FROM project_members WHERE project_id = $1;
 
+-- name: ApproveMember :execrows
+UPDATE project_members SET approved = true WHERE project_id = $1 AND user_id = $2;
+
+-- name: ApproveAllMembers :execrows
+UPDATE project_members SET approved = true WHERE project_id = $1 AND NOT approved;
+
 -- name: RemoveMember :execrows
 DELETE FROM project_members WHERE project_id = $1 AND user_id = $2;
 
@@ -54,7 +60,7 @@ ORDER BY m.joined_at, u.id
 LIMIT 1;
 
 -- name: ListMembers :many
-SELECT m.project_id, u.id, u.full_name, u.email, m.joined_at,
+SELECT m.project_id, u.id, u.full_name, u.email, m.joined_at, m.approved,
        (pr.user_id IS NOT NULL)::bool AS has_profile,
        s.id AS seat_id, s.position AS seat_position, s.name AS seat_name, a.state AS assignment_state
 FROM project_members m

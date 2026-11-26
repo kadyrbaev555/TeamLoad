@@ -201,7 +201,7 @@ func run() error {
 	// pass to Yerassyl if Akzhol deleted their profile.
 	joined := time.Now().Add(-48 * time.Hour)
 	for i, pp := range people {
-		if _, err := tx.Exec(ctx, "INSERT INTO project_members (project_id, user_id, joined_at) VALUES ($1, $2, $3)",
+		if _, err := tx.Exec(ctx, "INSERT INTO project_members (project_id, user_id, joined_at, approved) VALUES ($1, $2, $3, true)",
 			p.ID, users[pp.key], joined.Add(time.Duration(i)*time.Minute)); err != nil {
 			return err
 		}

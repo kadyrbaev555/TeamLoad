@@ -72,6 +72,7 @@ type ProjectMember struct {
 	ProjectID uuid.UUID
 	UserID    uuid.UUID
 	JoinedAt  time.Time
+	Approved  bool
 }
 
 type RaciActivity struct {

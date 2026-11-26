@@ -24,6 +24,7 @@ func team(t *testing.T, e *env, size int, names ...string) (*client, []*client, 
 		m.designProfile()
 		ms = append(ms, m)
 	}
+	owner.must(200, "POST", "/projects/"+id+"/members/approve", nil)
 	return owner, ms, id
 }
 
@@ -240,6 +241,11 @@ func TestMatching_NotReadyReasons(t *testing.T) {
 	e.user("Daniyar Kenzhebekov").must(200, "POST", "/invites/"+code+"/join", nil)
 	e.user("Timur Akhmetov").must(200, "POST", "/invites/"+code+"/join", nil)
 	r = owner.must(409, "POST", "/projects/"+id+"/matching/run", nil)
+	if r.errMessage() != domain.MsgMembersPending+" Waiting: Daniyar Kenzhebekov, Timur Akhmetov." {
+		t.Fatalf("got %q", r.errMessage())
+	}
+	owner.must(200, "POST", "/projects/"+id+"/members/approve", nil)
+	r = owner.must(409, "POST", "/projects/"+id+"/matching/run", nil)
 	if r.errMessage() != "Waiting for profiles: Daniyar Kenzhebekov, Timur Akhmetov." {
 		t.Fatalf("got %q", r.errMessage())
 	}
@@ -395,6 +401,7 @@ func TestMatching_AIFailureKeepsProfilesAndAllowsManual(t *testing.T) {
 		m.designProfile()
 		ms = append(ms, m)
 	}
+	owner.must(200, "POST", "/projects/"+id+"/members/approve", nil)
 	r := owner.must(502, "POST", "/projects/"+id+"/matching/run", nil)
 	if r.errMessage() != domain.MsgAIUnavailable {
 		t.Fatalf("got %s", r.Raw)
@@ -517,4 +524,53 @@ func TestRaci_RegenerateUnlinksTasks(t *testing.T) {
 	if obj(tasks[0])["raci_activity_id"] != nil {
 		t.Fatal("task must lose the link to a deleted activity")
 	}
+}
+
+// ---- member approval ----
+
+func TestMembers_ApprovalGatesRoles(t *testing.T) {
+	e := newEnv(t)
+	owner := e.user("Aruzhan Sadykova")
+	id, code := owner.project(3)
+	owner.must(200, "POST", "/projects/"+id+"/plan/generate", nil)
+	owner.must(200, "POST", "/projects/"+id+"/plan/approve", nil)
+	owner.designProfile()
+	var ms []*client
+	for _, n := range []string{"Daniyar Kenzhebekov", "Timur Akhmetov"} {
+		m := e.user(n)
+		m.must(200, "POST", "/invites/"+code+"/join", nil)
+		m.designProfile()
+		ms = append(ms, m)
+	}
+	approved := func() map[string]bool {
+		out := map[string]bool{}
+		for _, m := range list(owner.must(200, "GET", "/projects/"+id, nil).Body["members"]) {
+			out[obj(m)["id"].(string)] = obj(m)["approved"] == true
+		}
+		return out
+	}
+	if a := approved(); !a[owner.ID] || a[ms[0].ID] || a[ms[1].ID] {
+		t.Fatalf("new members must wait for approval, owner is approved: %v", a)
+	}
+	rd := obj(obj(owner.must(200, "GET", "/projects/"+id+"/matching", nil).Body["matching"])["readiness"])
+	if rd["can_run"] != false || len(list(rd["pending_members"])) != 2 {
+		t.Fatalf("readiness: %v", rd)
+	}
+	owner.must(409, "POST", "/projects/"+id+"/matching/run", nil)
+	seat := seatsOf(owner, id)[0]["id"].(string)
+	if r := owner.must(400, "PUT", "/projects/"+id+"/matching/seats/"+seat, map[string]any{"user_id": ms[0].ID}); r.errField("user_id") != domain.MsgMemberNotApproved {
+		t.Fatalf("pending member got a role: %s", r.Raw)
+	}
+	owner.must(200, "PUT", "/projects/"+id+"/matching/seats/"+seat, map[string]any{"user_id": owner.ID}) // owner is approved
+
+	ms[0].must(403, "POST", "/projects/"+id+"/members/"+ms[1].ID+"/approve", nil)
+	ms[0].must(403, "POST", "/projects/"+id+"/members/approve", nil)
+	owner.must(404, "POST", "/projects/"+id+"/members/00000000-0000-0000-0000-000000000000/approve", nil)
+	owner.must(200, "POST", "/projects/"+id+"/members/"+ms[0].ID+"/approve", nil)
+	if a := approved(); !a[ms[0].ID] || a[ms[1].ID] {
+		t.Fatalf("approve one: %v", a)
+	}
+	owner.must(409, "POST", "/projects/"+id+"/matching/run", nil)
+	owner.must(200, "POST", "/projects/"+id+"/members/approve", nil)
+	owner.must(200, "POST", "/projects/"+id+"/matching/run", nil)
 }

@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
 // Happy path (brief §10): register → create project → approve plan → second
-// user joins and fills in the profile → run matching → accept all → add task
+// user joins and fills in the profile → owner approves members → run matching → accept all → add task
 // → dashboard. Matching needs three members, so a third teammate joins too.
 
 const run = Date.now();
@@ -40,7 +40,7 @@ async function teammate(browser: Browser, link: string, name: string, email: str
   await expect(page.getByText(/\d \/ 3/)).toBeVisible();
   await page.getByRole("button", { name: "Join StudySpace E2E" }).click();
   await expect(page).toHaveURL(/\/profile$/);
-  await expect(page.getByText("You joined StudySpace E2E. Fill in your profile next.")).toBeVisible();
+  await expect(page.getByText("You joined StudySpace E2E. Fill in your profile while the owner approves you.")).toBeVisible();
   await fillProfile(page, strengths, weaknesses);
   await ctx.close();
 }
@@ -88,8 +88,11 @@ test("owner and teammates go from sign-up to the workload dashboard", async ({ p
     "React and TypeScript. I made two front-end pet projects and I care about fast, responsive pages.",
     "I hate writing documentation.", errors);
 
-  // Owner runs matching and accepts all.
+  // Owner approves the teammates, then runs matching and accepts all.
   await page.getByRole("link", { name: "Team roles" }).click();
+  await expect(page.getByRole("heading", { name: "Approve your team first." })).toBeVisible();
+  await page.getByRole("button", { name: "Approve all members" }).click();
+  await expect(page.getByText("Team approved")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Everyone is ready." })).toBeVisible();
   await page.getByRole("button", { name: "Run AI matching" }).click();
   await expect(page.getByRole("heading", { name: "Matching people to roles" })).toBeVisible();

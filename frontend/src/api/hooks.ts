@@ -180,6 +180,19 @@ export function useRemoveMember(id: string) {
   });
 }
 
+/** Approves one member, or every pending member when userId is null. */
+export function useApproveMember(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string | null) =>
+      api<ProjectBundle>("POST", userId ? `/projects/${id}/members/${userId}/approve` : `/projects/${id}/members/approve`),
+    onSuccess: (d) => {
+      qc.setQueryData(keys.project(id), d);
+      invalidateProject(qc, id);
+    },
+  });
+}
+
 // ---- invites ----
 
 export function useInvite(code: string) {

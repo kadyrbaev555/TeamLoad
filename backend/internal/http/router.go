@@ -103,6 +103,8 @@ func (s *Server) Handler() http.Handler {
 					r.Delete("/", handler(s.handleDeleteProject).ServeHTTP)
 					r.Post("/invite-code", handler(s.handleNewInviteCode).ServeHTTP)
 					r.Delete("/members/{userID}", handler(s.handleRemoveMember).ServeHTTP)
+					r.Post("/members/approve", handler(s.handleApproveAllMembers).ServeHTTP)
+					r.Post("/members/{userID}/approve", handler(s.handleApproveMember).ServeHTTP)
 					r.Put("/plan", handler(s.handlePutPlan).ServeHTTP)
 					r.Post("/plan/generate", handler(s.handleGeneratePlan).ServeHTTP)
 					r.Post("/plan/standard", handler(s.handleStandardPlan).ServeHTTP)

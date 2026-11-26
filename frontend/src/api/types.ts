@@ -10,6 +10,8 @@ export type Member = {
   color: string;
   is_owner: boolean;
   has_profile: boolean;
+  /** The owner approved this member; roles are distributed only among approved members. */
+  approved: boolean;
   seat_id: string | null;
   seat_name: string | null;
   role_confirmed: boolean;
@@ -91,6 +93,7 @@ export type Readiness = {
   member_count: number;
   team_size: number;
   missing_profiles: string[];
+  pending_members: string[];
   can_run: boolean;
 };
 

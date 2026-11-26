@@ -7,7 +7,7 @@ import { ConfirmModal } from "./Modal";
 import { TaskModal } from "./TaskModal";
 
 const member: Member = {
-  id: "u1", name: "Dana Bekova", first_name: "Dana", initials: "DB", color: "--r5", is_owner: false, has_profile: true,
+  id: "u1", name: "Dana Bekova", first_name: "Dana", initials: "DB", color: "--r5", is_owner: false, has_profile: true, approved: true,
   seat_id: null, seat_name: null, role_confirmed: false, joined_at: "2026-10-22T00:00:00Z",
 };
 

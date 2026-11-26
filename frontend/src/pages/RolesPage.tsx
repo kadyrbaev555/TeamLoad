@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { errorMessage } from "../api/client";
-import { useAcceptMatch, useAssignSeat, useMatching, useMe, usePlan, useRunMatching } from "../api/hooks";
+import { useAcceptMatch, useApproveMember, useAssignSeat, useMatching, useMe, usePlan, useRunMatching } from "../api/hooks";
 import type { MatchRow, Matching, Member, ProjectBundle, Seat } from "../api/types";
 import { useAiOverlay } from "../components/LoadingOverlay";
+import { MemberControls } from "../components/MemberControls";
 import { ConfirmModal } from "../components/Modal";
 import { useToast } from "../components/Toast";
 import { Avatar, Button, Chip, FitBar, Notice, PageHead, PageSkeleton } from "../components/ui";
@@ -12,15 +13,38 @@ import { matchingSteps } from "../lib/aiSteps";
 import { fmtDate, shortName, todayISO } from "../lib/format";
 import { MSG } from "../lib/validate";
 
-function ReadyList({ members, teamSize }: { members: Member[]; teamSize: number }) {
-  const ready = members.filter((m) => m.has_profile).length;
+function ApproveAllButton({ b, label = "Approve all" }: { b: ProjectBundle; label?: string }) {
+  const approve = useApproveMember(b.project.id);
+  const toast = useToast();
+  return (
+    <Button
+      size="sm"
+      variant="primary"
+      icon="check"
+      disabled={approve.isPending}
+      onClick={() => approve.mutate(null, { onSuccess: () => toast("Team approved"), onError: (e) => toast(errorMessage(e)) })}
+    >
+      {label}
+    </Button>
+  );
+}
+
+/** The team panel: approval and profile state per member; the owner can approve or remove. */
+function ReadyList({ b }: { b: ProjectBundle }) {
+  const { members, is_owner: owner } = b;
+  const teamSize = b.project.team_size;
+  const ready = members.filter((m) => m.has_profile && m.approved).length;
+  const pending = members.some((m) => !m.approved);
   return (
     <div className="panel pad stack" style={{ gap: 6 }}>
       <div className="row" style={{ justifyContent: "space-between" }}>
-        <h3>Profiles</h3>
-        <Chip tone={ready === members.length && members.length === teamSize ? "ok" : "warn"} className="mono">
-          {ready} / {teamSize}
-        </Chip>
+        <h3>Team</h3>
+        <span className="row" style={{ gap: 8 }}>
+          {owner && pending && <ApproveAllButton b={b} />}
+          <Chip tone={ready === members.length && members.length === teamSize ? "ok" : "warn"} className="mono">
+            {ready} / {teamSize}
+          </Chip>
+        </span>
       </div>
       <div className="ready">
         {members.map((m) => (
@@ -30,13 +54,15 @@ function ReadyList({ members, teamSize }: { members: Member[]; teamSize: number 
               {m.name}
               {m.is_owner && <span className="small muted"> · owner</span>}
             </span>
+            {!m.approved && <Chip tone="warn">Pending approval</Chip>}
             {m.has_profile ? (
               <Chip tone="ok" icon="check">
-                Ready
+                Profile ready
               </Chip>
             ) : (
               <Chip tone="warn">No profile</Chip>
             )}
+            {owner && <MemberControls m={m} projectId={b.project.id} />}
           </div>
         ))}
       </div>
@@ -103,8 +129,9 @@ function MatchRowView({ row, seat, seats, members, owner, onAssign, onAccept, bu
                 </option>
               )}
               {members.map((x) => (
-                <option key={x.id} value={x.id}>
+                <option key={x.id} value={x.id} disabled={!x.approved}>
                   {shortName(x.name)}
+                  {x.approved ? "" : " (pending approval)"}
                 </option>
               ))}
             </select>
@@ -162,6 +189,11 @@ function NotRun({ b, matching, onRun, error }: { b: ProjectBundle; matching: Mat
   } else if (r.member_count < 3) {
     title = "Invite your team first.";
     text = `Matching needs at least 3 members. ${r.member_count} of ${p.team_size} have joined; share the invite code from the role plan.`;
+  } else if (r.pending_members.length > 0) {
+    title = "Approve your team first.";
+    text = b.is_owner
+      ? `Waiting for approval: ${r.pending_members.join(", ")}. Approve or remove each member before roles are distributed.`
+      : `The owner has not approved everyone yet (${r.pending_members.join(", ")}). Roles are distributed after that.`;
   } else if (r.missing_profiles.length > 0) {
     title = "Waiting for profiles.";
     text = `Still needs a profile: ${r.missing_profiles.join(", ")}. The AI reads every profile before it suggests roles.`;
@@ -184,6 +216,8 @@ function NotRun({ b, matching, onRun, error }: { b: ProjectBundle; matching: Mat
               <Link className="btn primary" to={`/p/${p.id}/plan`}>
                 Open role plan
               </Link>
+            ) : r.pending_members.length > 0 && b.is_owner ? (
+              <ApproveAllButton b={b} label="Approve all members" />
             ) : r.can_run && b.is_owner ? (
               <Button variant="primary" icon="spark" onClick={onRun}>
                 Run AI matching
@@ -194,7 +228,7 @@ function NotRun({ b, matching, onRun, error }: { b: ProjectBundle; matching: Mat
               </Link>
             ) : null}
           </div>
-          <ReadyList members={b.members} teamSize={p.team_size} />
+          <ReadyList b={b} />
         </div>
       </div>
     </>
@@ -255,6 +289,7 @@ function RolesScreen({ b }: { b: ProjectBundle }) {
   const acceptable = M.rows.some((r) => r.user_id && r.state !== "accepted");
   const outdated = M.rows.filter((r) => r.outdated && r.user_id).map((r) => b.members.find((m) => m.id === r.user_id)?.first_name).filter(Boolean);
   const busy = assign.isPending || accept.isPending;
+  const pendingNames = b.members.filter((m) => !m.approved).map((m) => m.name);
   const sub = `${manual && !M.ran ? "Assign roles by hand" : ranLabel(M.ran_at)} · ${accepted} of ${M.rows.length} roles confirmed.`;
 
   return (
@@ -278,6 +313,17 @@ function RolesScreen({ b }: { b: ProjectBundle }) {
       />
       <div className="stack" style={{ gap: 16 }}>
         {error && <Notice tone="bad">{error}</Notice>}
+        {pendingNames.length > 0 && (
+          <Notice tone="warn">
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <span>
+                <b>Waiting for approval:</b> {pendingNames.join(", ")}.{" "}
+                {b.is_owner ? "Approve them here or remove them in Settings. Only approved members can get a role." : "Only approved members can get a role."}
+              </span>
+              {b.is_owner && <ApproveAllButton b={b} />}
+            </div>
+          </Notice>
+        )}
         {outdated.length > 0 && (
           <Notice tone="warn">
             <b>Profiles changed:</b> {outdated.join(", ")} updated their profile after matching ran. {b.is_owner ? "Run again to use the new text." : "The owner can run matching again."}

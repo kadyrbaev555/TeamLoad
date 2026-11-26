@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { ApiError, errorMessage } from "../api/client";
-import { useDeleteProject, useGeneratePlan, useNewInviteCode, usePlan, useRemoveMember, useUpdateProject } from "../api/hooks";
+import { useDeleteProject, useGeneratePlan, useNewInviteCode, usePlan, useUpdateProject } from "../api/hooks";
 import type { Member, ProjectBundle } from "../api/types";
 import { Field, Input, Textarea } from "../components/Field";
 import { Icon } from "../components/Icon";
+import { MemberControls } from "../components/MemberControls";
 import { useAiOverlay } from "../components/LoadingOverlay";
 import { Modal } from "../components/Modal";
 import { useCopy, useToast } from "../components/Toast";
@@ -69,9 +70,6 @@ function DetailsForm({ b, onDescriptionChanged }: { b: ProjectBundle; onDescript
 }
 
 function MemberRow({ m, projectId }: { m: Member; projectId: string }) {
-  const [asking, setAsking] = useState(false);
-  const remove = useRemoveMember(projectId);
-  const toast = useToast();
   return (
     <div className="memberrow">
       <Avatar person={m} />
@@ -79,36 +77,10 @@ function MemberRow({ m, projectId }: { m: Member; projectId: string }) {
         <b className="small">{m.name}</b>
         <div className="small muted">
           {m.is_owner ? "Owner · " : ""}
-          {m.seat_name ?? "No role yet"}
+          {m.approved ? (m.seat_name ?? "No role yet") : "Waiting for approval"}
         </div>
       </div>
-      {!m.is_owner &&
-        (asking ? (
-          <span className="row" style={{ gap: 6 }}>
-            <span className="small">Remove {m.first_name}?</span>
-            <button
-              className="btn danger sm"
-              type="button"
-              autoFocus
-              disabled={remove.isPending}
-              onClick={() =>
-                remove.mutate(m.id, {
-                  onSuccess: () => toast(`${m.first_name} was removed and their tasks unassigned`),
-                  onError: (e) => toast(errorMessage(e)),
-                })
-              }
-            >
-              Remove
-            </button>
-            <button className="btn sm" type="button" onClick={() => setAsking(false)}>
-              Keep
-            </button>
-          </span>
-        ) : (
-          <button className="btn sm ghost" type="button" onClick={() => setAsking(true)}>
-            Remove
-          </button>
-        ))}
+      <MemberControls m={m} projectId={projectId} />
     </div>
   );
 }
