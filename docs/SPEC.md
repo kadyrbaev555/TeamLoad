@@ -132,7 +132,8 @@ Error messages in quotes are **exact strings** (QA tests them). Every rule is va
 - **Delete my profile** (inline confirm as in the design): deletes the account and all personal data (profile, memberships, AI results); their tasks become unassigned; for every project they own, ownership passes to the earliest-joined remaining member (the confirm text names that person), or the project is deleted if nobody is left.
 
 ### 6.6 Team roles (AI matching)
-- "Run AI matching" is enabled when the plan is **approved**, the project has **at least 3 members**, and **every member has a ready profile**. Otherwise show the design's "not ready" state with the reason (plan not approved / who still needs a profile).
+- "Run AI matching" is enabled when the plan is **approved**, the project has **at least 3 members**, **every member is approved by the owner**, and **every member has a ready profile**. Otherwise show the design's "not ready" state with the reason (plan not approved / who still waits for approval / who still needs a profile).
+- **Member approval**: a member who joins is *Pending approval* until the owner approves them (one by one or "Approve all") or removes them. The owner is always approved. Only approved members can be given a role, by matching or by hand. Members who joined before approval existed count as approved.
 - One person per seat, one seat per person. If there are fewer members than seats, the leftover seats stay **Unassigned** (owner can assign later). Enforce with unique constraints on `(project_id, seat_id)` and `(project_id, user_id)`.
 - Each row shows the design's content: seat name + share, avatar + person select, fit score 0–100 with bar, explanation (2–3 sentences, quoting the profile, addressed to the person as "you"), "Also a good fit: {runner-up seat}", status chip.
 - Row states: **Suggested** (AI, not accepted) → **Accepted** (`ai_accepted`) or **Set manually** (`manual`, fit shown as "—", explanation replaced by the design's "Changed by the team…" text).
@@ -167,7 +168,7 @@ Error messages in quotes are **exact strings** (QA tests them). Every rule is va
 - Edit title, description, deadline (≥ today), context. If the description changed, show a modal offering to regenerate the role plan (same confirm rules as §6.4).
 - Team size is fixed after creation in the MVP.
 - Invite code: copy, make a new code (old one stops working at once).
-- Members list "N / teamSize", role per member. Remove a member (inline confirm as in the design): their tasks become unassigned and their seat becomes Unassigned. The owner cannot be removed.
+- Members list "N / teamSize", role per member. Approve a pending member. Remove a member (inline confirm as in the design): their tasks become unassigned and their seat becomes Unassigned. The owner cannot be removed.
 - Delete project: confirm in a modal by typing the project title. Deletes the project for every member with its plan, matching, RACI and tasks, then returns to My projects.
 
 ## 7. AI integration
@@ -239,7 +240,7 @@ Use `ON DELETE` rules that implement §6.5 and §6.10 (unassign tasks, clear sea
 
 REST + JSON under `/api`. Errors are always `{"error": {"code": "…", "message": "…", "fields": {"email": "…"}}}` with proper status codes (400 validation, 401, 403, 404, 409 conflict, 429, 502 for AI failure). Middleware: auth, project membership (404 for non-members), owner-only. Parameterized SQL only. CORS only in dev.
 
-Minimum endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`; `GET|PUT|DELETE /me/profile`; `GET|POST /projects`; `GET|PATCH|DELETE /projects/:id`; `POST /projects/:id/invite-code`; `GET /invites/:code`; `POST /invites/:code/join`; `DELETE /projects/:id/members/:userId`; `GET /projects/:id/plan`, `PUT /projects/:id/plan`, `POST /projects/:id/plan/generate`, `POST /projects/:id/plan/standard`, `POST /projects/:id/plan/approve`; `GET /projects/:id/matching`, `POST /projects/:id/matching/run`, `POST /projects/:id/matching/accept` (one or all), `PUT /projects/:id/matching/seats/:seatId`; `GET|PUT /projects/:id/raci`, `POST /projects/:id/raci/generate`; `GET|POST /projects/:id/tasks`, `PATCH|DELETE /projects/:id/tasks/:taskId`; `GET /projects/:id/dashboard`.
+Minimum endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`; `GET|PUT|DELETE /me/profile`; `GET|POST /projects`; `GET|PATCH|DELETE /projects/:id`; `POST /projects/:id/invite-code`; `GET /invites/:code`; `POST /invites/:code/join`; `DELETE /projects/:id/members/:userId`, `POST /projects/:id/members/:userId/approve`, `POST /projects/:id/members/approve` (all); `GET /projects/:id/plan`, `PUT /projects/:id/plan`, `POST /projects/:id/plan/generate`, `POST /projects/:id/plan/standard`, `POST /projects/:id/plan/approve`; `GET /projects/:id/matching`, `POST /projects/:id/matching/run`, `POST /projects/:id/matching/accept` (one or all), `PUT /projects/:id/matching/seats/:seatId`; `GET|PUT /projects/:id/raci`, `POST /projects/:id/raci/generate`; `GET|POST /projects/:id/tasks`, `PATCH|DELETE /projects/:id/tasks/:taskId`; `GET /projects/:id/dashboard`.
 
 ## 10. Quality bar (Definition of Done)
 

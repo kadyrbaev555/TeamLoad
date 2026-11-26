@@ -293,7 +293,7 @@ func (q *Queries) IsMember(ctx context.Context, arg IsMemberParams) (bool, error
 }
 
 const listMembers = `-- name: ListMembers :many
-SELECT m.project_id, u.id, u.full_name, u.email, m.joined_at,
+SELECT m.project_id, u.id, u.full_name, u.email, m.joined_at, m.approved,
        (pr.user_id IS NOT NULL)::bool AS has_profile,
        s.id AS seat_id, s.position AS seat_position, s.name AS seat_name, a.state AS assignment_state
 FROM project_members m
@@ -311,6 +311,7 @@ type ListMembersRow struct {
 	FullName        string
 	Email           string
 	JoinedAt        time.Time
+	Approved        bool
 	HasProfile      bool
 	SeatID          *uuid.UUID
 	SeatPosition    *int32
@@ -333,6 +334,7 @@ func (q *Queries) ListMembers(ctx context.Context, projectIds []uuid.UUID) ([]Li
 			&i.FullName,
 			&i.Email,
 			&i.JoinedAt,
+			&i.Approved,
 			&i.HasProfile,
 			&i.SeatID,
 			&i.SeatPosition,
@@ -461,6 +463,35 @@ func (q *Queries) ListProjectCards(ctx context.Context, userID uuid.UUID) ([]Lis
 		return nil, err
 	}
 	return items, nil
+}
+
+const approveAllMembers = `-- name: ApproveAllMembers :execrows
+UPDATE project_members SET approved = true WHERE project_id = $1 AND NOT approved
+`
+
+func (q *Queries) ApproveAllMembers(ctx context.Context, projectID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, approveAllMembers, projectID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const approveMember = `-- name: ApproveMember :execrows
+UPDATE project_members SET approved = true WHERE project_id = $1 AND user_id = $2
+`
+
+type ApproveMemberParams struct {
+	ProjectID uuid.UUID
+	UserID    uuid.UUID
+}
+
+func (q *Queries) ApproveMember(ctx context.Context, arg ApproveMemberParams) (int64, error) {
+	result, err := q.db.Exec(ctx, approveMember, arg.ProjectID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const removeMember = `-- name: RemoveMember :execrows

@@ -112,10 +112,10 @@ export function JoinPage() {
         }
         if (r.profile_ready) {
           navigate(`/p/${r.project_id}/plan`);
-          toast(`You joined ${r.title}.`);
+          toast(`You joined ${r.title}. The owner will approve you before roles are given.`);
         } else {
           navigate("/profile");
-          toast(`You joined ${r.title}. Fill in your profile next.`);
+          toast(`You joined ${r.title}. Fill in your profile while the owner approves you.`);
         }
       },
       onError: (e) => setJoinError(errorMessage(e)),

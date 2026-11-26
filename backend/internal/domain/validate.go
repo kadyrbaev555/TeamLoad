@@ -50,6 +50,9 @@ const (
 	MsgNoteTooLong    = "Keep the note under 500 characters."
 	MsgActivityName   = "Give every activity a name (up to 120 characters)."
 	MsgRaciValue      = "RACI values must be R, A, C, I or empty."
+
+	MsgMembersPending    = "Approve all team members before distributing roles."
+	MsgMemberNotApproved = "Approve this member before giving them a role."
 )
 
 // Limits shared by validators and the API.

@@ -39,6 +39,7 @@ type readinessJSON struct {
 	MemberCount     int      `json:"member_count"`
 	TeamSize        int32    `json:"team_size"`
 	MissingProfiles []string `json:"missing_profiles"`
+	PendingMembers  []string `json:"pending_members"`
 	CanRun          bool     `json:"can_run"`
 }
 
@@ -65,13 +66,17 @@ func (s *Server) readiness(ctx context.Context, p db.Project) (readinessJSON, er
 	if err != nil {
 		return readinessJSON{}, err
 	}
-	r := readinessJSON{PlanApproved: p.PlanStatus == "approved", MemberCount: len(rows), TeamSize: p.TeamSize, MissingProfiles: []string{}}
+	r := readinessJSON{PlanApproved: p.PlanStatus == "approved", MemberCount: len(rows), TeamSize: p.TeamSize,
+		MissingProfiles: []string{}, PendingMembers: []string{}}
 	for _, m := range rows {
 		if !m.HasProfile {
 			r.MissingProfiles = append(r.MissingProfiles, m.FullName)
 		}
+		if !memberApproved(m, m.ID == p.OwnerID) {
+			r.PendingMembers = append(r.PendingMembers, m.FullName)
+		}
 	}
-	r.CanRun = r.PlanApproved && r.MemberCount >= domain.MinTeamSize && len(r.MissingProfiles) == 0
+	r.CanRun = r.PlanApproved && r.MemberCount >= domain.MinTeamSize && len(r.PendingMembers) == 0 && len(r.MissingProfiles) == 0
 	return r, nil
 }
 
@@ -151,6 +156,8 @@ func (s *Server) handleRunMatching(w http.ResponseWriter, r *http.Request) error
 		return errConflict("not_ready", "Approve the role plan first.")
 	case ready.MemberCount < domain.MinTeamSize:
 		return errConflict("not_ready", fmt.Sprintf("Matching needs at least %d members.", domain.MinTeamSize))
+	case len(ready.PendingMembers) > 0:
+		return errConflict("not_ready", domain.MsgMembersPending+" Waiting: "+strings.Join(ready.PendingMembers, ", ")+".")
 	case len(ready.MissingProfiles) > 0:
 		return errConflict("not_ready", "Waiting for profiles: "+strings.Join(ready.MissingProfiles, ", ")+".")
 	}
@@ -276,10 +283,21 @@ func (s *Server) handleAssignSeat(w http.ResponseWriter, r *http.Request) error 
 	if !found {
 		return errNotFound("Role not found.")
 	}
-	if ok, err := s.st.IsMember(ctx, db.IsMemberParams{ProjectID: p.ID, UserID: userID}); err != nil {
+	rows, err := s.st.ListMembers(ctx, []uuid.UUID{p.ID})
+	if err != nil {
 		return err
-	} else if !ok {
+	}
+	var target *db.ListMembersRow
+	for i := range rows {
+		if rows[i].ID == userID {
+			target = &rows[i]
+		}
+	}
+	if target == nil {
 		return errField("user_id", "Choose a team member.")
+	}
+	if !memberApproved(*target, userID == p.OwnerID) {
+		return errField("user_id", domain.MsgMemberNotApproved)
 	}
 	err = s.st.Tx(ctx, func(q *db.Queries) error {
 		if _, err := q.GetProjectForUpdate(ctx, p.ID); err != nil {

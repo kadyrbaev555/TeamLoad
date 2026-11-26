@@ -254,6 +254,7 @@ func TestProjects_ListAndStatusChips(t *testing.T) {
 	if s := status(); s != "matching_pending" {
 		t.Fatalf("all ready: %s", s)
 	}
+	owner.must(200, "POST", "/projects/"+id+"/members/approve", nil)
 	owner.must(200, "POST", "/projects/"+id+"/matching/run", nil)
 	if s := status(); s != "matching_pending" {
 		t.Fatalf("suggested only: %s", s)

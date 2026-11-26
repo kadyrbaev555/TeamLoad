@@ -26,11 +26,16 @@ type memberJSON struct {
 	Color         string    `json:"color"`
 	IsOwner       bool      `json:"is_owner"`
 	HasProfile    bool      `json:"has_profile"`
+	Approved      bool      `json:"approved"`
 	SeatID        *string   `json:"seat_id"`
 	SeatName      *string   `json:"seat_name"`
 	RoleConfirmed bool      `json:"role_confirmed"`
 	JoinedAt      time.Time `json:"joined_at"`
 }
+
+// memberApproved reports whether the owner has approved a member. The owner
+// is always approved, also after ownership passes to another member.
+func memberApproved(m db.ListMembersRow, isOwner bool) bool { return m.Approved || isOwner }
 
 // membersByProject groups members per project. A member's avatar colour is
 // the colour of their seat; members without a seat get one by join order.
@@ -42,10 +47,11 @@ func membersByProject(rows []db.ListMembersRow, owners map[uuid.UUID]uuid.UUID) 
 		if m.SeatPosition != nil {
 			color = domain.SeatColor(int(*m.SeatPosition))
 		}
+		isOwner := owners[m.ProjectID] == m.ID
 		mj := memberJSON{
 			ID: m.ID.String(), Name: m.FullName, FirstName: domain.FirstName(m.FullName),
-			Initials: domain.Initials(m.FullName), Color: color, IsOwner: owners[m.ProjectID] == m.ID,
-			HasProfile: m.HasProfile, SeatName: m.SeatName, JoinedAt: m.JoinedAt,
+			Initials: domain.Initials(m.FullName), Color: color, IsOwner: isOwner,
+			HasProfile: m.HasProfile, Approved: memberApproved(m, isOwner), SeatName: m.SeatName, JoinedAt: m.JoinedAt,
 			RoleConfirmed: m.AssignmentState != nil && *m.AssignmentState == "accepted",
 		}
 		if m.SeatID != nil {
@@ -330,6 +336,43 @@ func (s *Server) handleDeleteProject(w http.ResponseWriter, r *http.Request) err
 		return err
 	}
 	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+// handleApproveMember approves one member so they can be given a role.
+func (s *Server) handleApproveMember(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+	p := projectFrom(ctx)
+	uid, err := uuid.Parse(chi.URLParam(r, "userID"))
+	if err != nil {
+		return errNotFound("Member not found.")
+	}
+	n, err := s.st.ApproveMember(ctx, db.ApproveMemberParams{ProjectID: p.ID, UserID: uid})
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return errNotFound("Member not found.")
+	}
+	return s.writeBundle(w, r, p)
+}
+
+// handleApproveAllMembers approves every member still waiting for approval.
+func (s *Server) handleApproveAllMembers(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+	p := projectFrom(ctx)
+	if _, err := s.st.ApproveAllMembers(ctx, p.ID); err != nil {
+		return err
+	}
+	return s.writeBundle(w, r, p)
+}
+
+func (s *Server) writeBundle(w http.ResponseWriter, r *http.Request, p db.Project) error {
+	b, err := s.projectBundle(r.Context(), p, userFrom(r.Context()).ID)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, b)
 	return nil
 }
 
