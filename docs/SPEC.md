@@ -168,6 +168,7 @@ Error messages in quotes are **exact strings** (QA tests them). Every rule is va
 - Team size is fixed after creation in the MVP.
 - Invite code: copy, make a new code (old one stops working at once).
 - Members list "N / teamSize", role per member. Remove a member (inline confirm as in the design): their tasks become unassigned and their seat becomes Unassigned. The owner cannot be removed.
+- Delete project: confirm in a modal by typing the project title. Deletes the project for every member with its plan, matching, RACI and tasks, then returns to My projects.
 
 ## 7. AI integration
 
@@ -238,7 +239,7 @@ Use `ON DELETE` rules that implement §6.5 and §6.10 (unassign tasks, clear sea
 
 REST + JSON under `/api`. Errors are always `{"error": {"code": "…", "message": "…", "fields": {"email": "…"}}}` with proper status codes (400 validation, 401, 403, 404, 409 conflict, 429, 502 for AI failure). Middleware: auth, project membership (404 for non-members), owner-only. Parameterized SQL only. CORS only in dev.
 
-Minimum endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`; `GET|PUT|DELETE /me/profile`; `GET|POST /projects`; `GET|PATCH /projects/:id`; `POST /projects/:id/invite-code`; `GET /invites/:code`; `POST /invites/:code/join`; `DELETE /projects/:id/members/:userId`; `GET /projects/:id/plan`, `PUT /projects/:id/plan`, `POST /projects/:id/plan/generate`, `POST /projects/:id/plan/standard`, `POST /projects/:id/plan/approve`; `GET /projects/:id/matching`, `POST /projects/:id/matching/run`, `POST /projects/:id/matching/accept` (one or all), `PUT /projects/:id/matching/seats/:seatId`; `GET|PUT /projects/:id/raci`, `POST /projects/:id/raci/generate`; `GET|POST /projects/:id/tasks`, `PATCH|DELETE /projects/:id/tasks/:taskId`; `GET /projects/:id/dashboard`.
+Minimum endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`; `GET|PUT|DELETE /me/profile`; `GET|POST /projects`; `GET|PATCH|DELETE /projects/:id`; `POST /projects/:id/invite-code`; `GET /invites/:code`; `POST /invites/:code/join`; `DELETE /projects/:id/members/:userId`; `GET /projects/:id/plan`, `PUT /projects/:id/plan`, `POST /projects/:id/plan/generate`, `POST /projects/:id/plan/standard`, `POST /projects/:id/plan/approve`; `GET /projects/:id/matching`, `POST /projects/:id/matching/run`, `POST /projects/:id/matching/accept` (one or all), `PUT /projects/:id/matching/seats/:seatId`; `GET|PUT /projects/:id/raci`, `POST /projects/:id/raci/generate`; `GET|POST /projects/:id/tasks`, `PATCH|DELETE /projects/:id/tasks/:taskId`; `GET /projects/:id/dashboard`.
 
 ## 10. Quality bar (Definition of Done)
 

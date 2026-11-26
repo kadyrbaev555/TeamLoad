@@ -150,6 +150,17 @@ export function useUpdateProject(id: string) {
   });
 }
 
+export function useDeleteProject(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<void>("DELETE", `/projects/${id}`),
+    onSuccess: () => {
+      qc.removeQueries({ queryKey: ["project", id] });
+      void qc.invalidateQueries({ queryKey: keys.projects });
+    },
+  });
+}
+
 export function useNewInviteCode(id: string) {
   const qc = useQueryClient();
   return useMutation({

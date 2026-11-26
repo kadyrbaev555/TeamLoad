@@ -100,6 +100,7 @@ func (s *Server) Handler() http.Handler {
 				r.Group(func(r chi.Router) {
 					r.Use(requireOwner)
 					r.Patch("/", handler(s.handlePatchProject).ServeHTTP)
+					r.Delete("/", handler(s.handleDeleteProject).ServeHTTP)
 					r.Post("/invite-code", handler(s.handleNewInviteCode).ServeHTTP)
 					r.Delete("/members/{userID}", handler(s.handleRemoveMember).ServeHTTP)
 					r.Put("/plan", handler(s.handlePutPlan).ServeHTTP)
