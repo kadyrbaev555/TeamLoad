@@ -119,7 +119,7 @@ Error messages in quotes are **exact strings** (QA tests them). Every rule is va
 ### 6.4 Role plan (AI)
 - Exactly **team size** seats. Each seat: name (≤40), summary (≤140), 3–5 responsibilities (≤80 each), 3–5 skills (≤30 each), effort share (integer 5–60), "why this project needs it" (≤300). Shares sum to **exactly 100**. Seat colours: `--r1…--r6` by seat order.
 - Status `draft` / `approved`. Owner actions, exactly as in the design:
-  - **Edit**: name, summary and effort share inline; "Effort total N% · must be 100%" turns red and "Save changes" is disabled when the sum ≠ 100.
+  - **Edit**: name, summary, responsibilities (3–5 items, ≤80 each; add, edit, remove) and effort share inline; "Effort total N% · must be 100%" turns red and "Save changes" is disabled when the sum ≠ 100.
   - **Regenerate** (optional free-text note, max 500 chars): replaces the seats, status → `draft`. If matching or RACI exist, confirm first in a modal ("This replaces the roles. Matching and RACI will be cleared.") and clear them on confirm.
   - **Approve plan**: only when the sum is 100. Unlocks matching and RACI.
 - Fallback when the AI fails twice: notice **"AI service temporarily unavailable. Please retry or assign roles manually"** with "Retry" and "Use a standard plan". The standard plan is built without AI from the role catalogue (§7.3) for this team size, with equal-ish shares summing to 100, as a normal editable draft.
